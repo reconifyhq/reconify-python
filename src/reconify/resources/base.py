@@ -39,6 +39,7 @@ class SyncResource:
                 raise ReconifyValidationError(f"Missing required path parameter: {python_name}")
             path = path.replace("{" + name + "}", quote(str(wire_params.pop(python_name)), safe=""))
         request_headers = dict(headers or {})
+        timeout = wire_params.pop("timeout", None)
         if wire_params.get("integrity_test_session"):
             request_headers["X-Integrity-Test-Session"] = wire_params.pop("integrity_test_session")
         if wire_params.get("after") is not None:
@@ -51,6 +52,7 @@ class SyncResource:
             headers=request_headers,
             model=response_model,
             raw=raw,
+            timeout=timeout,
         )
 
 
@@ -77,6 +79,7 @@ class AsyncResource:
                 raise ReconifyValidationError(f"Missing required path parameter: {python_name}")
             path = path.replace("{" + name + "}", quote(str(wire_params.pop(python_name)), safe=""))
         request_headers = dict(headers or {})
+        timeout = wire_params.pop("timeout", None)
         if wire_params.get("integrity_test_session"):
             request_headers["X-Integrity-Test-Session"] = wire_params.pop("integrity_test_session")
         if wire_params.get("after") is not None:
@@ -89,4 +92,5 @@ class AsyncResource:
             headers=request_headers,
             model=response_model,
             raw=raw,
+            timeout=timeout,
         )

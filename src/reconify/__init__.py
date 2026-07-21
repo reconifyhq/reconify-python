@@ -1,5 +1,7 @@
 """Typed clients for the Reconify Public API."""
 
+__version__ = "0.1.0"
+
 from .client import AsyncReconify, Reconify
 from .errors import (
     ReconifyAuthenticationError,
@@ -18,6 +20,7 @@ from .transport import RawResponse, RetryConfig
 __all__ = [
     "AsyncReconify",
     "Reconify",
+    "__version__",
     "RawResponse",
     "RetryConfig",
     "ReconifyError",

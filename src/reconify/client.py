@@ -105,13 +105,21 @@ class Reconify:
         self.close()
 
     def iter_events(self, **query: Any) -> Iterator[Any]:
-        return iter_cursor_pages(self.events.list_events, item_field="events", query=query)
+        return iter_cursor_pages(
+            lambda params: self.events.list_events(**params), item_field="events", query=query
+        )
 
     def iter_issues(self, **query: Any) -> Iterator[Any]:
-        return iter_cursor_pages(self.issues.list_issues, item_field="issues", query=query)
+        return iter_cursor_pages(
+            lambda params: self.issues.list_issues(**params), item_field="issues", query=query
+        )
 
     def iter_ledger_sources(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(self.ledger.list_ledger_sources, item_field="sources", query=query)
+        return iter_offset_pages(
+            lambda params: self.ledger.list_ledger_sources(**params),
+            item_field="sources",
+            query=query,
+        )
 
     def iter_ledger_transactions(self, source_id: str, **query: Any) -> Iterator[Any]:
         return iter_offset_pages(
@@ -122,30 +130,36 @@ class Reconify:
 
     def iter_reconciliation_schedules(self, **query: Any) -> Iterator[Any]:
         return iter_offset_pages(
-            self.reconciliations.list_reconciliation_schedules,
+            lambda params: self.reconciliations.list_reconciliation_schedules(**params),
             item_field="schedules",
             query=query,
         )
 
     def iter_reconciliations(self, **query: Any) -> Iterator[Any]:
         return iter_offset_pages(
-            self.reconciliations.list_reconciliations,
+            lambda params: self.reconciliations.list_reconciliations(**params),
             item_field="reconciliations",
             query=query,
         )
 
     def iter_setup_sources(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(self.setup.list_setup_sources, item_field="sources", query=query)
+        return iter_offset_pages(
+            lambda params: self.setup.list_setup_sources(**params),
+            item_field="sources",
+            query=query,
+        )
 
     def iter_wallet_transactions(self, **query: Any) -> Iterator[Any]:
         return iter_cursor_pages(
-            self.transactions.list_wallet_transactions,
+            lambda params: self.transactions.list_wallet_transactions(**params),
             item_field="transactions",
             query=query,
         )
 
     def iter_wallets(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(self.wallets.list_wallets, item_field="wallets", query=query)
+        return iter_offset_pages(
+            lambda params: self.wallets.list_wallets(**params), item_field="wallets", query=query
+        )
 
 
 class AsyncReconify:
@@ -193,14 +207,20 @@ class AsyncReconify:
         await self.aclose()
 
     def iter_events(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_cursor_pages(self.events.list_events, item_field="events", query=query)
+        return aiter_cursor_pages(
+            lambda params: self.events.list_events(**params), item_field="events", query=query
+        )
 
     def iter_issues(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_cursor_pages(self.issues.list_issues, item_field="issues", query=query)
+        return aiter_cursor_pages(
+            lambda params: self.issues.list_issues(**params), item_field="issues", query=query
+        )
 
     def iter_ledger_sources(self, **query: Any) -> AsyncIterator[Any]:
         return aiter_offset_pages(
-            self.ledger.list_ledger_sources, item_field="sources", query=query
+            lambda params: self.ledger.list_ledger_sources(**params),
+            item_field="sources",
+            query=query,
         )
 
     def iter_ledger_transactions(self, source_id: str, **query: Any) -> AsyncIterator[Any]:
@@ -212,27 +232,33 @@ class AsyncReconify:
 
     def iter_reconciliation_schedules(self, **query: Any) -> AsyncIterator[Any]:
         return aiter_offset_pages(
-            self.reconciliations.list_reconciliation_schedules,
+            lambda params: self.reconciliations.list_reconciliation_schedules(**params),
             item_field="schedules",
             query=query,
         )
 
     def iter_reconciliations(self, **query: Any) -> AsyncIterator[Any]:
         return aiter_offset_pages(
-            self.reconciliations.list_reconciliations,
+            lambda params: self.reconciliations.list_reconciliations(**params),
             item_field="reconciliations",
             query=query,
         )
 
     def iter_setup_sources(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(self.setup.list_setup_sources, item_field="sources", query=query)
+        return aiter_offset_pages(
+            lambda params: self.setup.list_setup_sources(**params),
+            item_field="sources",
+            query=query,
+        )
 
     def iter_wallet_transactions(self, **query: Any) -> AsyncIterator[Any]:
         return aiter_cursor_pages(
-            self.transactions.list_wallet_transactions,
+            lambda params: self.transactions.list_wallet_transactions(**params),
             item_field="transactions",
             query=query,
         )
 
     def iter_wallets(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(self.wallets.list_wallets, item_field="wallets", query=query)
+        return aiter_offset_pages(
+            lambda params: self.wallets.list_wallets(**params), item_field="wallets", query=query
+        )

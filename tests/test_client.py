@@ -152,6 +152,30 @@ def test_after_takes_precedence_over_offset() -> None:
     assert requests[0].url.params == httpx.QueryParams("after=opaque")
 
 
+def test_timeout_is_request_scoped_and_transport_errors_retry() -> None:
+    attempts = 0
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        requests.append(request)
+        if attempts == 1:
+            raise httpx.ReadTimeout("timed out", request=request)
+        return httpx.Response(200, json={"events": [], "limit": 1}, request=request)
+
+    with Reconify(
+        "rk_test",
+        base_url="http://api.test",
+        retry=RetryConfig(max_retries=1, base_delay=0, jitter=0),
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    ) as client:
+        client.events.list_events(timeout=0.1)
+
+    assert attempts == 2
+    assert requests[0].url.params == httpx.QueryParams()
+
+
 def test_models_preserve_aliases_and_tolerate_new_enum_values() -> None:
     row = IngestRow(
         idempotencyKey="row-1",

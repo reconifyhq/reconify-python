@@ -67,6 +67,12 @@ def _sleep_for(attempt: int, config: RetryConfig, retry_after: str | None) -> fl
     return float(min(config.max_delay, exponential + random.uniform(0.0, config.jitter)))
 
 
+def _can_retry_exception(method: str, attempts: int, config: RetryConfig) -> bool:
+    if attempts >= config.max_retries:
+        return False
+    return method.upper() in {"GET", "HEAD", "OPTIONS"} or config.retry_unsafe_methods
+
+
 def _payload(response: httpx.Response) -> Any:
     if not response.content:
         return None
@@ -121,6 +127,7 @@ class SyncTransport:
         headers: dict[str, str] | None = None,
         model: type[T] | None = None,
         raw: bool = False,
+        timeout: float | httpx.Timeout | None = None,
     ) -> T | RawResponse[T] | None:
         request_headers = {"Authorization": f"Bearer {self.api_key}"}
         if body is not None:
@@ -133,13 +140,21 @@ class SyncTransport:
         params = {key: value for key, value in (query or {}).items() if value is not None}
         attempts = 0
         while True:
-            response = self._client.request(
-                method,
-                f"{self.base_url}{path}",
-                params=params,
-                json=data if data is not None else None,
-                headers=request_headers,
-            )
+            try:
+                response = self._client.request(
+                    method,
+                    f"{self.base_url}{path}",
+                    params=params,
+                    json=data if data is not None else None,
+                    headers=request_headers,
+                    timeout=timeout,
+                )
+            except httpx.TransportError:
+                if not _can_retry_exception(method, attempts, self.retry):
+                    raise
+                time.sleep(_sleep_for(attempts, self.retry, None))
+                attempts += 1
+                continue
             if response.status_code not in {429, 503} or not self._can_retry(method, attempts):
                 return self._finish(response, model=model, raw=raw)
             delay = _sleep_for(attempts, self.retry, response.headers.get("Retry-After"))
@@ -212,6 +227,7 @@ class AsyncTransport:
         headers: dict[str, str] | None = None,
         model: type[T] | None = None,
         raw: bool = False,
+        timeout: float | httpx.Timeout | None = None,
     ) -> T | RawResponse[T] | None:
         request_headers = {"Authorization": f"Bearer {self.api_key}"}
         if body is not None:
@@ -224,13 +240,21 @@ class AsyncTransport:
         params = {key: value for key, value in (query or {}).items() if value is not None}
         attempts = 0
         while True:
-            response = await self._client.request(
-                method,
-                f"{self.base_url}{path}",
-                params=params,
-                json=data if data is not None else None,
-                headers=request_headers,
-            )
+            try:
+                response = await self._client.request(
+                    method,
+                    f"{self.base_url}{path}",
+                    params=params,
+                    json=data if data is not None else None,
+                    headers=request_headers,
+                    timeout=timeout,
+                )
+            except httpx.TransportError:
+                if not _can_retry_exception(method, attempts, self.retry):
+                    raise
+                await asyncio.sleep(_sleep_for(attempts, self.retry, None))
+                attempts += 1
+                continue
             if response.status_code not in {429, 503} or not self._can_retry(method, attempts):
                 return self._finish(response, model=model, raw=raw)
             delay = _sleep_for(attempts, self.retry, response.headers.get("Retry-After"))
