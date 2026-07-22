@@ -5,7 +5,7 @@ Typed synchronous and asynchronous clients for the Reconify Public API.
 ## Installation
 
 ```bash
-pip install reconify
+pip install reconify-python
 ```
 
 ## Quickstart

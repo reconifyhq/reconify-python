@@ -3,7 +3,7 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "reconify"
+name = "reconify-python"
 version = "0.1.0"
 description = "Typed Python client for the Reconify Public API"
 readme = "README.md"
