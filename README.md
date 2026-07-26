@@ -1,6 +1,7 @@
 # Reconify Python SDK
 
-Typed synchronous and asynchronous clients for the Reconify Public API.
+Typed synchronous and asynchronous clients for sending events to the Reconify
+Public API.
 
 ## Installation
 
@@ -8,90 +9,197 @@ Typed synchronous and asynchronous clients for the Reconify Public API.
 pip install reconify-python
 ```
 
-## Quickstart
+## Quickstart: send an integrity event
+
+```python
+from datetime import datetime, timezone
+
+from reconify import Reconify
+from reconify.models import IngestEventsInputBody, PublicEvent
+
+event = PublicEvent(
+    source_id="source_123",
+    source_event_id="checkout-evt-123",
+    event_type="payment.succeeded",
+    occurred_at=datetime.now(timezone.utc),
+    amount_minor=1250,
+    currency="USD",
+    wallet_id="wallet_123",
+)
+
+with Reconify(api_key="rk_...") as client:
+    result = client.ingestion.ingest_integrity_events(
+        IngestEventsInputBody(events=[event])
+    )
+    print(result.accepted, result.rejected)
+```
+
+The key may also be supplied through `RECONIFY_API_KEY`. The default endpoint
+is `https://api.reconifyhq.com/v1`; pass
+`base_url="https://staging.example/v1"` for staging or self-hosted
+deployments. `/v1` is added when it is absent.
+
+## Sending integrity events
+
+The SDK has two direct integrity-event endpoints:
+
+| Purpose | Method |
+| --- | --- |
+| Send production integrity events | `client.ingestion.ingest_integrity_events(...)` |
+| Send test-session integrity events | `client.ingestion.ingest_integrity_test_events(...)` |
+
+Both accept an `IngestEventsInputBody` containing typed `PublicEvent` models.
+Python model fields use `snake_case`; the SDK serializes them to the API’s
+wire format.
+
+### Send a batch and inspect partial results
+
+```python
+from datetime import datetime, timezone
+
+from reconify import Reconify
+from reconify.models import IngestEventsInputBody, PublicEvent
+
+batch = IngestEventsInputBody(
+    events=[
+        PublicEvent(
+            source_id="source_123",
+            source_event_id="payment-evt-123",
+            event_type="payment.succeeded",
+            occurred_at=datetime(2026, 1, 31, 12, 0, tzinfo=timezone.utc),
+            amount_minor=1250,
+            currency="USD",
+            wallet_id="wallet_123",
+            external_reference="order-123",
+            metadata={"channel": "web"},
+        ),
+        PublicEvent(
+            source_id="source_123",
+            source_event_id="refund-evt-456",
+            event_type="payment.refunded",
+            occurred_at=datetime(2026, 1, 31, 12, 5, tzinfo=timezone.utc),
+            amount_minor=-250,
+            currency="USD",
+            wallet_id="wallet_123",
+            external_reference="order-123",
+        ),
+    ]
+)
+
+with Reconify() as client:
+    result = client.ingestion.ingest_integrity_events(batch)
+
+    for accepted in result.accepted or []:
+        print("accepted", accepted.index, accepted.source_event_id)
+    for rejected in result.rejected or []:
+        print("rejected", rejected.index, rejected.code, rejected.reason)
+```
+
+`source_event_id` identifies the source event. Keep it stable when retrying the
+same event. The API returns accepted and rejected rows independently, so a
+batch can contain both successful and rejected events.
+
+### Send test-session events
+
+Test-session events use the same event models. Pass the test-session token as
+`integrity_test_session`; the SDK sends it as
+`X-Integrity-Test-Session`.
+
+```python
+with Reconify() as client:
+    result = client.ingestion.ingest_integrity_test_events(
+        batch,
+        integrity_test_session="test-session-token",
+    )
+    print(result.accepted, result.rejected)
+```
+
+### Submit events to a setup test session
+
+After a test session has been created, submit its events with the setup
+endpoint. This is also a sending operation and accepts the same `PublicEvent`
+models.
 
 ```python
 from reconify import Reconify
+from reconify.models import SetupSubmitSessionInputBody
 
-with Reconify(api_key="rk_...") as client:
-    sources = client.ledger.list_ledger_sources(limit=25)
-    for source in sources.sources or []:
-        print(source.id, source.name)
+with Reconify() as client:
+    result = client.setup.submit_test_session_events(
+        "session_123",
+        SetupSubmitSessionInputBody(events=batch.events),
+        integrity_test_session="test-session-token",
+    )
+    print(result.accepted, result.rejected)
 ```
 
-The key may also be supplied through `RECONIFY_API_KEY`. The default endpoint is
-`https://api.reconifyhq.com/v1`; pass `base_url="https://staging.example/v1"`
-for staging or self-hosted deployments. `/v1` is added when it is absent.
+## Batch limits and validation
 
-## Async usage and pagination
+- Integrity event batches contain 1–500 events.
+- Integrity event requests must not exceed 5 MiB.
+- Invalid model fields and batch sizes are rejected before an HTTP request is
+  sent.
+- Event payloads can include `amount_minor`, `currency`, `wallet_id`,
+  `external_reference`, `provider_reference`, `operation_id`, and `metadata`.
+
+## Async sending
+
+`AsyncReconify` exposes the same sending operations. Use `async with` to close
+the underlying HTTP client automatically.
 
 ```python
+import asyncio
+
 from reconify import AsyncReconify
 
-async with AsyncReconify() as client:
-    async for event in client.iter_events(limit=100):
-        print(event.id)
+
+async def send_events() -> None:
+    async with AsyncReconify() as client:
+        result = await client.ingestion.ingest_integrity_events(batch)
+        print(result.accepted, result.rejected)
+
+
+asyncio.run(send_events())
 ```
 
-Cursor and offset iterators preserve opaque cursors and the server's page size.
-When an endpoint accepts both cursor and offset pagination, `after` takes
-precedence.
+Async operations support normal `asyncio` cancellation.
 
-Every list operation also has a natural iterator on the client, for example
-`client.iter_reconciliations(limit=100)` or
-`client.iter_wallet_transactions(after="cursor")`. The async equivalent is
-an async iterator. Iterators forward query parameters using keyword arguments,
-so they never expose transport details.
+## Retries, timeouts, and failures
 
-## Errors and retries
+Mutating requests are not retried by default. If a sending workflow can safely
+replay the same stable event IDs, opt into unsafe retries explicitly.
 
-HTTP failures raise typed `ReconifyError` subclasses. Every HTTP error exposes
-`status_code`, `detail`, `code`, validation details, response headers, and the
-response `request_id` without including credentials or request bodies.
+```python
+from reconify import Reconify
+from reconify.errors import ReconifyRequestError
+from reconify.transport import RetryConfig
 
-429, 503, and transient HTTP transport failures such as timeouts are retried
-for safe methods with bounded exponential backoff and jitter. Mutating methods
-are not retried unless `RetryConfig(retry_unsafe_methods=True)` is supplied.
-Transaction ingestion retries must reuse each row's `idempotencyKey`.
+with Reconify(
+    request_id="trace-123",
+    retry=RetryConfig(max_retries=2, retry_unsafe_methods=True),
+) as client:
+    try:
+        result = client.ingestion.ingest_integrity_events(batch, timeout=10)
+    except ReconifyRequestError as exc:
+        print(exc.status_code, exc.detail, exc.request_id)
+```
 
-The client default timeout is 30 seconds. Individual operations can override
-it with `timeout=...`, including an `httpx.Timeout` object. Async operations
-also support normal `asyncio` cancellation, which is the Python equivalent of
-context cancellation in other SDKs.
+HTTP failures raise typed `ReconifyError` subclasses. Each error exposes the
+status code, detail, error code, validation details, response headers, and
+request ID without including credentials or request bodies.
 
-Use `raw=True` on any operation to receive status, headers, request ID, and raw
-body through `RawResponse`.
+Use `raw=True` when the sending workflow needs the status, headers, request ID,
+and unparsed response body:
 
-## Test-session and ingestion headers
+```python
+with Reconify() as client:
+    response = client.ingestion.ingest_integrity_events(batch, raw=True)
+    print(response.status_code, response.request_id)
+    print(response.json())
+```
 
-Integrity ingestion and test-session submission accept
-`integrity_test_session=...`, which is sent as `X-Integrity-Test-Session`.
-Integrity batches support 1–500 events and ledger transaction batches support
-1–5000 transactions; the SDK does not truncate caller input.
-
-The SDK intentionally excludes reconciliation adjustment, evidence, lifecycle,
-report-item, and signoff operations. The retained reconciliation surface is
-integrity sources, reconciliation list/create/get, and all schedule operations.
-
-## API reference
-
-The public operation methods are grouped by API module. Request bodies use the
-typed Pydantic models exported from `reconify.models`; list query parameters use
-the OpenAPI names in snake_case. Every operation accepts `raw=True` and a
-per-request `timeout` override.
-
-| Module | Methods |
-| --- | --- |
-| Alerts | `list_alert_rules`, `put_alert_rule` |
-| Events | `list_events`, `get_event`, `reveal_event_field` |
-| Ingestion | `ingest_integrity_events`, `ingest_integrity_test_events` |
-| Issues | `list_issues`, `get_issue_summary`, `get_issue`, `update_issue`, `list_issue_deliveries`, `retry_issue_delivery`, `add_issue_note`, `resolve_issue` |
-| Ledger | `list_ledger_sources`, `create_ledger_source`, `delete_ledger_source`, `get_ledger_source`, `update_ledger_source`, `list_source_periods`, `list_transactions`, `ingest_transactions` |
-| Reconciliations | `list_integrity_sources_for_reconciliation`, `list_reconciliation_schedules`, `create_reconciliation_schedule`, `delete_reconciliation_schedule`, `get_reconciliation_schedule`, `update_reconciliation_schedule`, `list_reconciliations`, `create_reconciliation`, `get_reconciliation` |
-| Search | `search_integrity_resources` |
-| Setup | `list_setup_integrations`, `get_setup_integration`, `list_setup_sources`, `create_setup_source`, `get_setup_source`, `update_setup_source`, `disable_setup_source`, `create_test_session`, `get_test_session`, `get_test_session_result`, `retry_test_session`, `submit_test_session_events` |
-| Transactions | `list_wallet_transactions`, `get_wallet_transaction` |
-| Wallets | `list_wallets`, `get_wallet`, `get_wallet_balance` |
+The client default timeout is 30 seconds. Individual sending operations can
+override it with `timeout=...`, including an `httpx.Timeout` object.
 
 ## Build and deploy
 
