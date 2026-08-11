@@ -14,7 +14,7 @@ def iter_cursor_pages(
     item_field: str,
     query: dict[str, Any] | None = None,
 ) -> Iterator[T]:
-    """Yield items while passing the server's opaque ``nextCursor`` onward."""
+    """Yield items while passing the server's opaque ``next_cursor`` onward."""
 
     params = dict(query or {})
     params.pop("offset", None) if params.get("after") is not None else None

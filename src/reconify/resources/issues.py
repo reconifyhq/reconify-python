@@ -1,18 +1,16 @@
-"""Issues API resource client."""
+"""Issue investigation resource client."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from ..models import (
-    DeliveriesOutputBody,
-    IssueCounts,
-    IssueDetail,
-    IssuePage,
-    IssueUpdateInputBody,
-    NoteInputBody,
-    ResolveInputBody,
-    StatusOutputBody,
+    AddNoteRequest,
+    Issue,
+    ListIssuesResponse,
+    ListNotesResponse,
+    Note,
+    PatchIssueRequest,
 )
 from .base import AsyncResource, SyncResource
 
@@ -20,188 +18,112 @@ from .base import AsyncResource, SyncResource
 class Issues(SyncResource):
     def list_issues(self, raw: bool = False, **query: Any) -> Any:
         return self._request(
-            "GET",
-            "/issues",
-            params=query,
-            body=None,
-            response_model=IssuePage,
-            raw=raw,
+            "GET", "/issues", params=query, response_model=ListIssuesResponse, raw=raw
         )
 
-    def get_issue_summary(self, raw: bool = False, **query: Any) -> Any:
+    def get_issue(self, issue_id: str, raw: bool = False, **query: Any) -> Any:
         return self._request(
             "GET",
-            "/issues/summary",
-            params=query,
-            body=None,
-            response_model=IssueCounts,
-            raw=raw,
-        )
-
-    def get_issue(self, id: str, raw: bool = False, **query: Any) -> Any:
-        return self._request(
-            "GET",
-            "/issues/{id}",
-            params={**query, "id": id},
-            body=None,
-            response_model=IssueDetail,
+            "/issues/{issue_id}",
+            params={**query, "issue_id": issue_id},
+            response_model=Issue,
             raw=raw,
         )
 
     def update_issue(
-        self, id: str, body: IssueUpdateInputBody, raw: bool = False, **query: Any
+        self, issue_id: str, body: PatchIssueRequest, raw: bool = False, **query: Any
     ) -> Any:
         return self._request(
             "PATCH",
-            "/issues/{id}",
-            params={**query, "id": id},
+            "/issues/{issue_id}",
+            params={**query, "issue_id": issue_id},
             body=body,
-            response_model=StatusOutputBody,
+            response_model=Issue,
             raw=raw,
         )
 
-    def list_issue_deliveries(self, id: str, raw: bool = False, **query: Any) -> Any:
+    def list_issue_notes(self, issue_id: str, raw: bool = False, **query: Any) -> Any:
         return self._request(
             "GET",
-            "/issues/{id}/deliveries",
-            params={**query, "id": id},
-            body=None,
-            response_model=DeliveriesOutputBody,
+            "/issues/{issue_id}/notes",
+            params={**query, "issue_id": issue_id},
+            response_model=ListNotesResponse,
             raw=raw,
         )
 
-    def retry_issue_delivery(
-        self, id: str, delivery_id: str, raw: bool = False, **query: Any
+    def add_issue_note(
+        self,
+        issue_id: str,
+        body: AddNoteRequest,
+        *,
+        idempotency_key: str | None = None,
+        raw: bool = False,
+        **query: Any,
     ) -> Any:
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
         return self._request(
             "POST",
-            "/issues/{id}/deliveries/{deliveryId}/retry",
-            params={**query, "id": id, "delivery_id": delivery_id},
-            body=None,
-            response_model=StatusOutputBody,
-            raw=raw,
-        )
-
-    def add_issue_note(self, id: str, body: NoteInputBody, raw: bool = False, **query: Any) -> Any:
-        return self._request(
-            "POST",
-            "/issues/{id}/notes",
-            params={**query, "id": id},
+            "/issues/{issue_id}/notes",
+            params={**query, "issue_id": issue_id},
             body=body,
-            response_model=StatusOutputBody,
+            response_model=Note,
             raw=raw,
-        )
-
-    def resolve_issue(
-        self, id: str, body: ResolveInputBody, raw: bool = False, **query: Any
-    ) -> Any:
-        return self._request(
-            "POST",
-            "/issues/{id}/resolve",
-            params={**query, "id": id},
-            body=body,
-            response_model=StatusOutputBody,
-            raw=raw,
+            headers=headers,
         )
 
 
 class AsyncIssues(AsyncResource):
     async def list_issues(self, raw: bool = False, **query: Any) -> Any:
         return await self._request(
-            "GET",
-            "/issues",
-            params=query,
-            body=None,
-            response_model=IssuePage,
-            raw=raw,
+            "GET", "/issues", params=query, response_model=ListIssuesResponse, raw=raw
         )
 
-    async def get_issue_summary(self, raw: bool = False, **query: Any) -> Any:
+    async def get_issue(self, issue_id: str, raw: bool = False, **query: Any) -> Any:
         return await self._request(
             "GET",
-            "/issues/summary",
-            params=query,
-            body=None,
-            response_model=IssueCounts,
-            raw=raw,
-        )
-
-    async def get_issue(self, id: str, raw: bool = False, **query: Any) -> Any:
-        return await self._request(
-            "GET",
-            "/issues/{id}",
-            params={**query, "id": id},
-            body=None,
-            response_model=IssueDetail,
+            "/issues/{issue_id}",
+            params={**query, "issue_id": issue_id},
+            response_model=Issue,
             raw=raw,
         )
 
     async def update_issue(
-        self, id: str, body: IssueUpdateInputBody, raw: bool = False, **query: Any
+        self, issue_id: str, body: PatchIssueRequest, raw: bool = False, **query: Any
     ) -> Any:
         return await self._request(
             "PATCH",
-            "/issues/{id}",
-            params={**query, "id": id},
+            "/issues/{issue_id}",
+            params={**query, "issue_id": issue_id},
             body=body,
-            response_model=StatusOutputBody,
+            response_model=Issue,
             raw=raw,
         )
 
-    async def list_issue_deliveries(self, id: str, raw: bool = False, **query: Any) -> Any:
+    async def list_issue_notes(self, issue_id: str, raw: bool = False, **query: Any) -> Any:
         return await self._request(
             "GET",
-            "/issues/{id}/deliveries",
-            params={**query, "id": id},
-            body=None,
-            response_model=DeliveriesOutputBody,
-            raw=raw,
-        )
-
-    async def retry_issue_delivery(
-        self, id: str, delivery_id: str, raw: bool = False, **query: Any
-    ) -> Any:
-        return await self._request(
-            "POST",
-            "/issues/{id}/deliveries/{deliveryId}/retry",
-            params={**query, "id": id, "delivery_id": delivery_id},
-            body=None,
-            response_model=StatusOutputBody,
+            "/issues/{issue_id}/notes",
+            params={**query, "issue_id": issue_id},
+            response_model=ListNotesResponse,
             raw=raw,
         )
 
     async def add_issue_note(
-        self, id: str, body: NoteInputBody, raw: bool = False, **query: Any
+        self,
+        issue_id: str,
+        body: AddNoteRequest,
+        *,
+        idempotency_key: str | None = None,
+        raw: bool = False,
+        **query: Any,
     ) -> Any:
+        headers = {"Idempotency-Key": idempotency_key} if idempotency_key else None
         return await self._request(
             "POST",
-            "/issues/{id}/notes",
-            params={**query, "id": id},
+            "/issues/{issue_id}/notes",
+            params={**query, "issue_id": issue_id},
             body=body,
-            response_model=StatusOutputBody,
+            response_model=Note,
             raw=raw,
+            headers=headers,
         )
-
-    async def resolve_issue(
-        self, id: str, body: ResolveInputBody, raw: bool = False, **query: Any
-    ) -> Any:
-        return await self._request(
-            "POST",
-            "/issues/{id}/resolve",
-            params={**query, "id": id},
-            body=body,
-            response_model=StatusOutputBody,
-            raw=raw,
-        )
-
-
-OPERATION_SPECS = {
-    "list_issues": ("issues", "GET", "/issues"),
-    "get_issue_summary": ("issues", "GET", "/issues/summary"),
-    "get_issue": ("issues", "GET", "/issues/{id}"),
-    "update_issue": ("issues", "PATCH", "/issues/{id}"),
-    "list_issue_deliveries": ("issues", "GET", "/issues/{id}/deliveries"),
-    "retry_issue_delivery": ("issues", "POST", "/issues/{id}/deliveries/{deliveryId}/retry"),
-    "add_issue_note": ("issues", "POST", "/issues/{id}/notes"),
-    "resolve_issue": ("issues", "POST", "/issues/{id}/resolve"),
-}

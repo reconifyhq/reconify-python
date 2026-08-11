@@ -1,0 +1,18 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'"
+run_mode = "concurrent"
+
+[scripts.run.verify]
+command = ".venv/bin/python scripts/fetch_contract.py && .venv/bin/ruff check . && .venv/bin/mypy src && .venv/bin/pytest -q && .venv/bin/python -m build"
+icon = "check"
+default = true
+
+[scripts.run.sync-contract]
+command = ".venv/bin/python scripts/fetch_contract.py --latest && .venv/bin/python -m pytest -q tests/test_openapi_coverage.py"
+icon = "refresh-cw"
+
+[scripts.run.release-check]
+command = ".venv/bin/ruff check . && .venv/bin/mypy src && .venv/bin/pytest -q && .venv/bin/python -m build"
+icon = "package-check"

@@ -4,38 +4,31 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..models import EventDetail, EventPage, EventRevealOutputBody
+from ..models import Event, ListEventsResponse
 from .base import AsyncResource, SyncResource
 
 
 class Events(SyncResource):
     def list_events(self, raw: bool = False, **query: Any) -> Any:
         return self._request(
+            "GET", "/events", params=query, response_model=ListEventsResponse, raw=raw
+        )
+
+    def get_event(self, event_id: str, raw: bool = False, **query: Any) -> Any:
+        return self._request(
             "GET",
-            "/events",
-            params=query,
-            body=None,
-            response_model=EventPage,
+            "/events/{event_id}",
+            params={**query, "event_id": event_id},
+            response_model=Event,
             raw=raw,
         )
 
-    def get_event(self, id: str, raw: bool = False, **query: Any) -> Any:
+    def list_issue_events(self, issue_id: str, raw: bool = False, **query: Any) -> Any:
         return self._request(
             "GET",
-            "/events/{id}",
-            params={**query, "id": id},
-            body=None,
-            response_model=EventDetail,
-            raw=raw,
-        )
-
-    def reveal_event_field(self, id: str, raw: bool = False, **query: Any) -> Any:
-        return self._request(
-            "GET",
-            "/events/{id}/reveal",
-            params={**query, "id": id},
-            body=None,
-            response_model=EventRevealOutputBody,
+            "/issues/{issue_id}/events",
+            params={**query, "issue_id": issue_id},
+            response_model=ListEventsResponse,
             raw=raw,
         )
 
@@ -43,37 +36,23 @@ class Events(SyncResource):
 class AsyncEvents(AsyncResource):
     async def list_events(self, raw: bool = False, **query: Any) -> Any:
         return await self._request(
-            "GET",
-            "/events",
-            params=query,
-            body=None,
-            response_model=EventPage,
-            raw=raw,
+            "GET", "/events", params=query, response_model=ListEventsResponse, raw=raw
         )
 
-    async def get_event(self, id: str, raw: bool = False, **query: Any) -> Any:
+    async def get_event(self, event_id: str, raw: bool = False, **query: Any) -> Any:
         return await self._request(
             "GET",
-            "/events/{id}",
-            params={**query, "id": id},
-            body=None,
-            response_model=EventDetail,
+            "/events/{event_id}",
+            params={**query, "event_id": event_id},
+            response_model=Event,
             raw=raw,
         )
 
-    async def reveal_event_field(self, id: str, raw: bool = False, **query: Any) -> Any:
+    async def list_issue_events(self, issue_id: str, raw: bool = False, **query: Any) -> Any:
         return await self._request(
             "GET",
-            "/events/{id}/reveal",
-            params={**query, "id": id},
-            body=None,
-            response_model=EventRevealOutputBody,
+            "/issues/{issue_id}/events",
+            params={**query, "issue_id": issue_id},
+            response_model=ListEventsResponse,
             raw=raw,
         )
-
-
-OPERATION_SPECS = {
-    "list_events": ("events", "GET", "/events"),
-    "get_event": ("events", "GET", "/events/{id}"),
-    "reveal_event_field": ("events", "GET", "/events/{id}/reveal"),
-}

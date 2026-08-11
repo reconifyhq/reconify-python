@@ -91,12 +91,12 @@ def _validate_request_body(body: Any) -> Any:
     return body
 
 
-def _validate_integrity_payload(path: str, body: Any) -> None:
-    if path not in {"/integrity/events", "/integrity/test-events"} or body is None:
+def _validate_ingestion_payload(path: str, body: Any) -> None:
+    if path != "/events" or body is None:
         return
     payload_size = len(json.dumps(body, separators=(",", ":"), default=str).encode("utf-8"))
     if payload_size > 5 * 1024 * 1024:
-        raise ReconifyValidationError("Integrity event requests must not exceed 5 MiB")
+        raise ReconifyValidationError("Monitoring event requests must not exceed 5 MiB")
 
 
 class SyncTransport:
@@ -136,7 +136,7 @@ class SyncTransport:
             request_headers["X-Request-ID"] = self.request_id
         request_headers.update(headers or {})
         data = _validate_request_body(body)
-        _validate_integrity_payload(path, data)
+        _validate_ingestion_payload(path, data)
         params = {key: value for key, value in (query or {}).items() if value is not None}
         attempts = 0
         while True:
@@ -236,7 +236,7 @@ class AsyncTransport:
             request_headers["X-Request-ID"] = self.request_id
         request_headers.update(headers or {})
         data = _validate_request_body(body)
-        _validate_integrity_payload(path, data)
+        _validate_ingestion_payload(path, data)
         params = {key: value for key, value in (query or {}).items() if value is not None}
         attempts = 0
         while True:

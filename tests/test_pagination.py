@@ -7,18 +7,15 @@ from reconify import AsyncReconify, Reconify
 
 def _event(event_id: str) -> dict[str, object]:
     return {
-        "amountMinor": 100,
-        "applied": True,
-        "canonicalHash": f"hash-{event_id}",
-        "currency": "USD",
-        "eventSchemaVersion": 1,
-        "eventType": "payment",
         "id": event_id,
-        "occurredAt": "2026-01-01T00:00:00Z",
-        "processingStatus": "applied",
-        "receivedAt": "2026-01-01T00:00:01Z",
-        "sourceEventId": f"source-{event_id}",
-        "sourceId": "source-1",
+        "flow": "payment_to_wallet",
+        "event_type": "payment.succeeded",
+        "reference": event_id,
+        "entity_type": "wallet",
+        "entity_id": "wallet-1",
+        "occurred_at": "2026-01-01T00:00:00Z",
+        "received_at": "2026-01-01T00:00:01Z",
+        "status": "processed",
     }
 
 
@@ -31,12 +28,12 @@ def test_sync_cursor_iterator_forwards_query_and_cursor() -> None:
         if "after" not in params:
             return httpx.Response(
                 200,
-                json={"events": [_event("event-1")], "limit": 1, "nextCursor": "cursor-1"},
+                json={"events": [_event("event-1")], "limit": 1, "next_cursor": "cursor-1"},
                 request=request,
             )
         return httpx.Response(
             200,
-            json={"events": [_event("event-2")], "limit": 1, "nextCursor": None},
+            json={"events": [_event("event-2")], "limit": 1},
             request=request,
         )
 
@@ -60,13 +57,11 @@ async def test_async_cursor_iterator_forwards_query_and_cursor() -> None:
         if "after" not in params:
             return httpx.Response(
                 200,
-                json={"events": [_event("event-1")], "limit": 1, "nextCursor": "cursor-1"},
+                json={"events": [_event("event-1")], "limit": 1, "next_cursor": "cursor-1"},
                 request=request,
             )
         return httpx.Response(
-            200,
-            json={"events": [_event("event-2")], "limit": 1, "nextCursor": None},
-            request=request,
+            200, json={"events": [_event("event-2")], "limit": 1}, request=request
         )
 
     async with AsyncReconify(
