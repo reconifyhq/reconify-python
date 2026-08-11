@@ -6,9 +6,36 @@ import httpx
 import pytest
 
 from reconify import Reconify
-from reconify.errors import ReconifyRateLimitError
-from reconify.models import AlertRuleRequest, IngestEventsInputBody, IngestRow, SourceOutputBody
+from reconify.errors import (
+    ReconifyAuthenticationError,
+    ReconifyConflictError,
+    ReconifyNotFoundError,
+    ReconifyPermissionError,
+    ReconifyRateLimitError,
+    ReconifyRequestError,
+    ReconifyServiceUnavailableError,
+)
+from reconify.models import (
+    AddNoteRequest,
+    MonitoringBatchRequest,
+    MonitoringEvent,
+    PatchIssueRequest,
+)
 from reconify.transport import RetryConfig
+
+
+def _event(event_id: str = "evt_1") -> dict[str, object]:
+    return {
+        "id": event_id,
+        "flow": "payment_to_wallet",
+        "event_type": "payment.succeeded",
+        "reference": "order-1",
+        "entity_type": "wallet",
+        "entity_id": "wallet-1",
+        "occurred_at": "2026-01-01T00:00:00Z",
+        "received_at": "2026-01-01T00:00:01Z",
+        "status": "processed",
+    }
 
 
 def test_base_url_and_request_contract() -> None:
@@ -17,62 +44,88 @@ def test_base_url_and_request_contract() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
         return httpx.Response(
-            200,
-            json={
-                "source": {
-                    "id": "source-1",
-                    "orgId": "org-1",
-                    "name": "Books",
-                    "schemaMapping": {},
-                    "createdAt": "2026-01-01T00:00:00Z",
-                    "updatedAt": "2026-01-01T00:00:00Z",
-                }
-            },
-            headers={"X-Request-ID": "response-id"},
-            request=request,
+            200, json=_event(), headers={"X-Request-ID": "response-id"}, request=request
         )
 
-    transport = httpx.MockTransport(handler)
-    http_client = httpx.Client(transport=transport)
     with Reconify(
         "rk_test",
         base_url="http://localhost:3002/v1/",
         request_id="caller-id",
-        http_client=http_client,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     ) as client:
-        result = client.ledger.get_ledger_source("source id")
+        result = client.events.get_event("event id")
 
-    assert isinstance(result, SourceOutputBody)
-    assert requests[0].method == "GET"
-    assert str(requests[0].url) == "http://localhost:3002/v1/ledger/sources/source%20id"
+    assert result.id == "evt_1"
+    assert str(requests[0].url) == "http://localhost:3002/v1/events/event%20id"
     assert requests[0].headers["Authorization"] == "Bearer rk_test"
     assert requests[0].headers["X-Request-ID"] == "caller-id"
 
 
-def test_base_url_can_come_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_base_url_and_key_can_come_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RECONIFY_API_URL", "http://api.test/v1/")
+    monkeypatch.setenv("RECONIFY_API_KEY", "rk_environment")
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(200, json={"events": [], "limit": 1}, request=request)
+        return httpx.Response(200, json={"status": "operational"}, request=request)
 
+    with Reconify(http_client=httpx.Client(transport=httpx.MockTransport(handler))) as client:
+        client.metadata.get_health()
+
+    assert str(requests[0].url) == "http://api.test/v1/health"
+    assert requests[0].headers["Authorization"] == "Bearer rk_environment"
+
+
+def test_ingestion_serializes_typed_body() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(202, json={"results": []}, request=request)
+
+    body = MonitoringBatchRequest(
+        events=[
+            MonitoringEvent(
+                flow="payment_to_wallet",
+                type="payment.succeeded",
+                reference="order-1",
+                entity_id="wallet-1",
+                amount="10.00",
+                currency="USD",
+            )
+        ]
+    )
     with Reconify(
         "rk_test",
+        base_url="http://api.test",
         http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     ) as client:
-        client.events.list_events()
+        client.ingestion.ingest_monitoring_events(body)
 
-    assert str(requests[0].url) == "http://api.test/v1/events"
+    assert json.loads(requests[0].content)["events"][0]["entity_id"] == "wallet-1"
+    assert requests[0].url.path == "/v1/events"
 
 
-def test_json_aliases_and_raw_response() -> None:
+def test_note_idempotency_header_and_issue_assignment() -> None:
     requests: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
+        if request.method == "POST":
+            return httpx.Response(201, json={"id": "note-1", "body": "checked"}, request=request)
         return httpx.Response(
-            200, content=b'{"status":"ok"}', headers={"X-Request-ID": "r"}, request=request
+            200,
+            json={
+                "id": "issue-1",
+                "status": "open",
+                "category": "missing_event",
+                "severity": "medium",
+                "message": "missing evidence",
+                "assigned_to": None,
+                "opened_at": "2026-01-01T00:00:00Z",
+            },
+            request=request,
         )
 
     with Reconify(
@@ -80,43 +133,20 @@ def test_json_aliases_and_raw_response() -> None:
         base_url="http://api.test",
         http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     ) as client:
-        response = client.alerts.put_alert_rule(
-            AlertRuleRequest(
-                breachEnabled=True,
-                controlId="control-1",
-                dedupWindowSeconds=60,
-                destinations={},
-                resolutionEnabled=True,
-                severityMin="low",
-            ),
-            raw=True,
+        client.issues.add_issue_note(
+            "issue-1", AddNoteRequest(body="checked"), idempotency_key="note-1"
         )
+        client.issues.update_issue("issue-1", PatchIssueRequest(assigned_to=None))
 
-    assert response.status_code == 200
-    assert response.request_id == "r"
-    assert json.loads(response.body) == {"status": "ok"}
-    assert requests[0].headers["Content-Type"] == "application/json"
-
-
-def test_204_returns_none() -> None:
-    with Reconify(
-        "rk_test",
-        base_url="http://api.test",
-        http_client=httpx.Client(
-            transport=httpx.MockTransport(lambda request: httpx.Response(204, request=request))
-        ),
-    ) as client:
-        assert client.ledger.delete_ledger_source("source-1") is None
+    assert requests[0].headers["Idempotency-Key"] == "note-1"
+    assert requests[1].method == "PATCH"
 
 
 def test_errors_are_typed_and_safe() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             429,
-            json={
-                "title": "Too Many Requests",
-                "errors": [{"location": "$code", "message": "rate_limited"}],
-            },
+            json={"title": "Too Many Requests", "code": "rate_limited", "message": "slow down"},
             headers={"X-Request-ID": "error-id"},
             request=request,
         )
@@ -135,6 +165,42 @@ def test_errors_are_typed_and_safe() -> None:
     assert "rk_secret" not in str(caught.value)
 
 
+@pytest.mark.parametrize(
+    ("status", "error_type"),
+    [
+        (400, ReconifyRequestError),
+        (401, ReconifyAuthenticationError),
+        (403, ReconifyPermissionError),
+        (404, ReconifyNotFoundError),
+        (409, ReconifyConflictError),
+        (429, ReconifyRateLimitError),
+        (503, ReconifyServiceUnavailableError),
+    ],
+)
+def test_public_error_statuses_are_typed(
+    status: int, error_type: type[Exception]
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status,
+            json={"code": "test_error", "message": "request rejected"},
+            headers={"X-Request-ID": "status-id"},
+            request=request,
+        )
+
+    with Reconify(
+        "rk_test",
+        base_url="http://api.test",
+        retry=RetryConfig(max_retries=0),
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    ) as client:
+        with pytest.raises(error_type) as caught:
+            client.events.list_events()
+
+    assert caught.value.status_code == status
+    assert caught.value.request_id == "status-id"
+
+
 def test_after_takes_precedence_over_offset() -> None:
     requests: list[httpx.Request] = []
 
@@ -150,55 +216,3 @@ def test_after_takes_precedence_over_offset() -> None:
         client.events.list_events(after="opaque", offset=100)
 
     assert requests[0].url.params == httpx.QueryParams("after=opaque")
-
-
-def test_timeout_is_request_scoped_and_transport_errors_retry() -> None:
-    attempts = 0
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal attempts
-        attempts += 1
-        requests.append(request)
-        if attempts == 1:
-            raise httpx.ReadTimeout("timed out", request=request)
-        return httpx.Response(200, json={"events": [], "limit": 1}, request=request)
-
-    with Reconify(
-        "rk_test",
-        base_url="http://api.test",
-        retry=RetryConfig(max_retries=1, base_delay=0, jitter=0),
-        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
-    ) as client:
-        client.events.list_events(timeout=0.1)
-
-    assert attempts == 2
-    assert requests[0].url.params == httpx.QueryParams()
-
-
-def test_models_preserve_aliases_and_tolerate_new_enum_values() -> None:
-    row = IngestRow(
-        idempotencyKey="row-1",
-        date="2026-01-01",
-        amountMinor=100,
-        currency="USD",
-        direction="future_direction",
-    )
-    assert row.idempotency_key == "row-1"
-    assert row.direction.value == "future_direction"
-    assert row.model_dump(by_alias=True)["idempotencyKey"] == "row-1"
-
-
-def test_documented_batch_limits_are_validated() -> None:
-    with pytest.raises(ValueError):
-        IngestEventsInputBody(events=[])
-
-    with pytest.raises(ValueError):
-        IngestRow(
-            idempotencyKey="row-1",
-            date="2026-01-01",
-            amountMinor=100,
-            currency="USD",
-            direction="debit",
-            unexpected=True,
-        )

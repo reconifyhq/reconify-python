@@ -9,35 +9,20 @@ from typing import Any
 import httpx
 
 from .errors import ReconifyValidationError
-from .pagination import (
-    aiter_cursor_pages,
-    aiter_offset_pages,
-    iter_cursor_pages,
-    iter_offset_pages,
-)
+from .pagination import aiter_cursor_pages, iter_cursor_pages
 from .resources import (
     ASYNC_RESOURCE_CLASSES,
     SYNC_RESOURCE_CLASSES,
-    Alerts,
-    AsyncAlerts,
     AsyncEvents,
     AsyncIngestion,
     AsyncIssues,
-    AsyncLedger,
-    AsyncReconciliations,
-    AsyncSearch,
-    AsyncSetup,
-    AsyncTransactions,
-    AsyncWallets,
+    AsyncMetadata,
+    AsyncOrganization,
     Events,
     Ingestion,
     Issues,
-    Ledger,
-    Reconciliations,
-    Search,
-    Setup,
-    Transactions,
-    Wallets,
+    Metadata,
+    Organization,
 )
 from .transport import AsyncTransport, RetryConfig, SyncTransport
 
@@ -52,9 +37,7 @@ def _normalize_base_url(base_url: str | None) -> str:
 def _api_key(api_key: str | None) -> str:
     value = api_key or os.getenv("RECONIFY_API_KEY")
     if not value:
-        raise ReconifyValidationError("An API key is required")
-    if value.startswith("sk_live_"):
-        raise ReconifyValidationError("Legacy sk_live_ keys are not supported; use an rk_ key")
+        raise ReconifyValidationError("An API key is required; set api_key or RECONIFY_API_KEY")
     if not value.startswith("rk_"):
         raise ReconifyValidationError("Reconify public API keys must start with rk_")
     return value
@@ -63,16 +46,11 @@ def _api_key(api_key: str | None) -> str:
 class Reconify:
     """Synchronous typed Reconify API client."""
 
-    alerts: Alerts
+    metadata: Metadata
     events: Events
     ingestion: Ingestion
     issues: Issues
-    ledger: Ledger
-    reconciliations: Reconciliations
-    search: Search
-    setup: Setup
-    transactions: Transactions
-    wallets: Wallets
+    organization: Organization
 
     def __init__(
         self,
@@ -114,67 +92,22 @@ class Reconify:
             lambda params: self.issues.list_issues(**params), item_field="issues", query=query
         )
 
-    def iter_ledger_sources(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(
-            lambda params: self.ledger.list_ledger_sources(**params),
-            item_field="sources",
-            query=query,
-        )
-
-    def iter_ledger_transactions(self, source_id: str, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(
-            lambda params: self.ledger.list_transactions(source_id, **params),
-            item_field="transactions",
-            query=query,
-        )
-
-    def iter_reconciliation_schedules(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(
-            lambda params: self.reconciliations.list_reconciliation_schedules(**params),
-            item_field="schedules",
-            query=query,
-        )
-
-    def iter_reconciliations(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(
-            lambda params: self.reconciliations.list_reconciliations(**params),
-            item_field="reconciliations",
-            query=query,
-        )
-
-    def iter_setup_sources(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(
-            lambda params: self.setup.list_setup_sources(**params),
-            item_field="sources",
-            query=query,
-        )
-
-    def iter_wallet_transactions(self, **query: Any) -> Iterator[Any]:
+    def iter_issue_events(self, issue_id: str, **query: Any) -> Iterator[Any]:
         return iter_cursor_pages(
-            lambda params: self.transactions.list_wallet_transactions(**params),
-            item_field="transactions",
+            lambda params: self.events.list_issue_events(issue_id, **params),
+            item_field="events",
             query=query,
-        )
-
-    def iter_wallets(self, **query: Any) -> Iterator[Any]:
-        return iter_offset_pages(
-            lambda params: self.wallets.list_wallets(**params), item_field="wallets", query=query
         )
 
 
 class AsyncReconify:
     """Asynchronous typed Reconify API client."""
 
-    alerts: AsyncAlerts
+    metadata: AsyncMetadata
     events: AsyncEvents
     ingestion: AsyncIngestion
     issues: AsyncIssues
-    ledger: AsyncLedger
-    reconciliations: AsyncReconciliations
-    search: AsyncSearch
-    setup: AsyncSetup
-    transactions: AsyncTransactions
-    wallets: AsyncWallets
+    organization: AsyncOrganization
 
     def __init__(
         self,
@@ -216,49 +149,9 @@ class AsyncReconify:
             lambda params: self.issues.list_issues(**params), item_field="issues", query=query
         )
 
-    def iter_ledger_sources(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(
-            lambda params: self.ledger.list_ledger_sources(**params),
-            item_field="sources",
-            query=query,
-        )
-
-    def iter_ledger_transactions(self, source_id: str, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(
-            lambda params: self.ledger.list_transactions(source_id, **params),
-            item_field="transactions",
-            query=query,
-        )
-
-    def iter_reconciliation_schedules(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(
-            lambda params: self.reconciliations.list_reconciliation_schedules(**params),
-            item_field="schedules",
-            query=query,
-        )
-
-    def iter_reconciliations(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(
-            lambda params: self.reconciliations.list_reconciliations(**params),
-            item_field="reconciliations",
-            query=query,
-        )
-
-    def iter_setup_sources(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(
-            lambda params: self.setup.list_setup_sources(**params),
-            item_field="sources",
-            query=query,
-        )
-
-    def iter_wallet_transactions(self, **query: Any) -> AsyncIterator[Any]:
+    def iter_issue_events(self, issue_id: str, **query: Any) -> AsyncIterator[Any]:
         return aiter_cursor_pages(
-            lambda params: self.transactions.list_wallet_transactions(**params),
-            item_field="transactions",
+            lambda params: self.events.list_issue_events(issue_id, **params),
+            item_field="events",
             query=query,
-        )
-
-    def iter_wallets(self, **query: Any) -> AsyncIterator[Any]:
-        return aiter_offset_pages(
-            lambda params: self.wallets.list_wallets(**params), item_field="wallets", query=query
         )
