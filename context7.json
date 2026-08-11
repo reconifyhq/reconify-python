@@ -1,0 +1,15 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Reconify Python SDK",
+  "description": "Typed synchronous and asynchronous Python clients for the Reconify Public API.",
+  "folders": ["src"],
+  "excludeFolders": ["tests", "reports"],
+  "rules": [
+    "Use Reconify for synchronous code and AsyncReconify for asynchronous code.",
+    "Provide the API key with api_key or RECONIFY_API_KEY; configure staging or self-hosted deployments with base_url.",
+    "Treat pagination cursors as opaque. When an endpoint accepts both cursor and offset pagination, after takes precedence.",
+    "Safe methods retry 429, 503, and transient transport failures by default. Mutating methods require RetryConfig(retry_unsafe_methods=True) to opt into retries.",
+    "Reuse each row's idempotencyKey when retrying transaction ingestion.",
+    "Use raw=True when callers need status, headers, request IDs, and raw response bodies; use the per-request timeout override when needed."
+  ]
+}
