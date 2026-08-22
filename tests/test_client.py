@@ -49,20 +49,20 @@ def test_base_url_and_request_contract() -> None:
 
     with Reconify(
         "rk_test",
-        base_url="http://localhost:3002/v1/",
+        base_url="http://localhost:3002/v2/",
         request_id="caller-id",
         http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     ) as client:
         result = client.events.get_event("event id")
 
     assert result.id == "evt_1"
-    assert str(requests[0].url) == "http://localhost:3002/v1/events/event%20id"
+    assert str(requests[0].url) == "http://localhost:3002/v2/events/event%20id"
     assert requests[0].headers["Authorization"] == "Bearer rk_test"
     assert requests[0].headers["X-Request-ID"] == "caller-id"
 
 
 def test_base_url_and_key_can_come_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("RECONIFY_API_URL", "http://api.test/v1/")
+    monkeypatch.setenv("RECONIFY_API_URL", "http://api.test/v2/")
     monkeypatch.setenv("RECONIFY_API_KEY", "rk_environment")
     requests: list[httpx.Request] = []
 
@@ -73,7 +73,7 @@ def test_base_url_and_key_can_come_from_environment(monkeypatch: pytest.MonkeyPa
     with Reconify(http_client=httpx.Client(transport=httpx.MockTransport(handler))) as client:
         client.metadata.get_health()
 
-    assert str(requests[0].url) == "http://api.test/v1/health"
+    assert str(requests[0].url) == "http://api.test/v2/health"
     assert requests[0].headers["Authorization"] == "Bearer rk_environment"
 
 
@@ -104,7 +104,7 @@ def test_ingestion_serializes_typed_body() -> None:
         client.ingestion.ingest_monitoring_events(body)
 
     assert json.loads(requests[0].content)["events"][0]["entity_id"] == "wallet-1"
-    assert requests[0].url.path == "/v1/events"
+    assert requests[0].url.path == "/v2/events"
 
 
 def test_note_idempotency_header_and_issue_assignment() -> None:
