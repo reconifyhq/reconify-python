@@ -1,6 +1,6 @@
 # Reconify Python SDK
 
-Typed synchronous and asynchronous clients for the public Reconify v1 API.
+Typed synchronous and asynchronous clients for the public Reconify v2 API.
 
 ## Installation and quickstart
 
@@ -18,8 +18,8 @@ with Reconify(api_key="rk_...") as client:
 ```
 
 The API key may also come from `RECONIFY_API_KEY`. The default endpoint is
-`https://api.reconifyhq.com/v1`. `RECONIFY_API_URL` or `base_url` can select a
-staging or self-hosted endpoint, and URLs with or without `/v1` are accepted.
+`https://api.reconifyhq.com/v2`. `RECONIFY_API_URL` or `base_url` can select a
+staging or self-hosted endpoint, and URLs with or without `/v2` are accepted.
 
 ## Public resources
 
@@ -56,11 +56,11 @@ The default source is the public manifest at
 set `RECONIFY_OPENAPI_SPEC` to an explicit OpenAPI JSON file. The SDK never
 depends on another checkout or an absolute workspace path.
 
-## Migration to 1.0.0
+## Migration to 2.0.0
 
-Version `1.0.0` targets the current monitoring and issue-investigation API. The
-former ledger, wallet, setup, search, alert, and reconciliation methods are
-removed because they are not part of the public contract. See
+Version `2.0.0` targets the v2 monitoring and issue-investigation API at `/v2`.
+Generated operation IDs use stable `resource_action` identifiers while the
+Python resource methods retain their snake_case names. See
 [UPGRADING.md](UPGRADING.md).
 
 ## Build and release

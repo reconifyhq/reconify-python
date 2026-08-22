@@ -1,8 +1,8 @@
-# Upgrading to 1.0.0
+# Upgrading to 2.0.0
 
-The 1.0.0 client is rebuilt against the current public Reconify v1 contract.
-It removes methods that described private or retired ledger, wallet, setup,
-search, alert, and reconciliation routes.
+The 2.0.0 client targets the public Reconify v2 contract at `/v2`.
+Generated operation IDs now use stable `resource_action` identifiers. The
+Python resource methods keep their existing snake_case names.
 
 Use these resources:
 
@@ -13,5 +13,5 @@ Use these resources:
 - organization: organization and member reads
 
 Python models use snake_case fields and preserve unknown enum values through
-tolerant string enums. Regenerate or refresh the models after downloading a
-new public contract version.
+tolerant string enums. Existing v1 clients can continue using `/v1`; v2
+clients must use the v2 artifact and endpoint.

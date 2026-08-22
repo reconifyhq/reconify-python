@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from reconify.resources import OPERATION_SPECS, SYNC_RESOURCE_CLASSES
+from reconify.resources import OPERATION_METHODS, OPERATION_SPECS, SYNC_RESOURCE_CLASSES
 
 
 def _openapi_path() -> Path | None:
@@ -23,7 +23,7 @@ def _operations() -> list[tuple[str, str, str]]:
         pytest.skip("OpenAPI source is not available; run scripts/fetch_contract.py")
     document = json.loads(path.read_text())
     return [
-        (operation["operationId"], method.upper(), route.removeprefix("/v1") or "/")
+        (operation["operationId"], method.upper(), route.removeprefix("/v2") or "/")
         for route, methods in document["paths"].items()
         for method, operation in methods.items()
         if method.lower() in {"get", "post", "put", "patch", "delete"}
@@ -44,9 +44,9 @@ def test_every_openapi_operation_has_a_public_method() -> None:
     assert len({operation_id for operation_id, _, _ in operations}) == len(operations)
     assert len(OPERATION_SPECS) == len(operations)
     for operation_id, verb, route in operations:
-        method_name = operation_id.replace("-", "_")
-        assert method_name in OPERATION_SPECS, f"Missing SDK contract for {operation_id}"
-        group, registered_verb, registered_route = OPERATION_SPECS[method_name]
+        method_name = OPERATION_METHODS[operation_id]
+        assert operation_id in OPERATION_SPECS, f"Missing SDK contract for {operation_id}"
+        group, registered_verb, registered_route = OPERATION_SPECS[operation_id]
         assert registered_route == route
         assert registered_verb == verb
         assert hasattr(SYNC_RESOURCE_CLASSES[group], method_name), (

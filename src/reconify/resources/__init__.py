@@ -22,19 +22,35 @@ ASYNC_RESOURCE_CLASSES = {
 }
 
 OPERATION_SPECS = {
-    "get_api_info": ("metadata", "GET", "/"),
-    "list_events": ("events", "GET", "/events"),
-    "ingest_monitoring_events": ("ingestion", "POST", "/events"),
-    "get_event": ("events", "GET", "/events/{event_id}"),
-    "get_health": ("metadata", "GET", "/health"),
-    "list_issues": ("issues", "GET", "/issues"),
-    "get_issue": ("issues", "GET", "/issues/{issue_id}"),
-    "update_issue": ("issues", "PATCH", "/issues/{issue_id}"),
-    "list_issue_events": ("events", "GET", "/issues/{issue_id}/events"),
-    "list_issue_notes": ("issues", "GET", "/issues/{issue_id}/notes"),
-    "add_issue_note": ("issues", "POST", "/issues/{issue_id}/notes"),
-    "get_organization": ("organization", "GET", "/organization"),
-    "list_organization_members": ("organization", "GET", "/organization/members"),
+    "api_info_get": ("metadata", "GET", "/"),
+    "events_list": ("events", "GET", "/events"),
+    "events_ingest": ("ingestion", "POST", "/events"),
+    "events_get": ("events", "GET", "/events/{event_id}"),
+    "health_get": ("metadata", "GET", "/health"),
+    "issues_list": ("issues", "GET", "/issues"),
+    "issues_get": ("issues", "GET", "/issues/{issue_id}"),
+    "issues_assign": ("issues", "PATCH", "/issues/{issue_id}"),
+    "issues_list_events": ("events", "GET", "/issues/{issue_id}/events"),
+    "issues_list_notes": ("issues", "GET", "/issues/{issue_id}/notes"),
+    "issues_add_note": ("issues", "POST", "/issues/{issue_id}/notes"),
+    "organization_get": ("organization", "GET", "/organization"),
+    "organization_list_members": ("organization", "GET", "/organization/members"),
+}
+
+OPERATION_METHODS = {
+    "api_info_get": "get_api_info",
+    "events_list": "list_events",
+    "events_ingest": "ingest_monitoring_events",
+    "events_get": "get_event",
+    "health_get": "get_health",
+    "issues_list": "list_issues",
+    "issues_get": "get_issue",
+    "issues_assign": "update_issue",
+    "issues_list_events": "list_issue_events",
+    "issues_list_notes": "list_issue_notes",
+    "issues_add_note": "add_issue_note",
+    "organization_get": "get_organization",
+    "organization_list_members": "list_organization_members",
 }
 
 __all__ = [
@@ -50,5 +66,6 @@ __all__ = [
     "Organization",
     "ASYNC_RESOURCE_CLASSES",
     "OPERATION_SPECS",
+    "OPERATION_METHODS",
     "SYNC_RESOURCE_CLASSES",
 ]

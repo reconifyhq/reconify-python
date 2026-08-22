@@ -26,12 +26,12 @@ from .resources import (
 )
 from .transport import AsyncTransport, RetryConfig, SyncTransport
 
-DEFAULT_BASE_URL = "https://api.reconifyhq.com/v1"
+DEFAULT_BASE_URL = "https://api.reconifyhq.com/v2"
 
 
 def _normalize_base_url(base_url: str | None) -> str:
     value = (base_url or os.getenv("RECONIFY_API_URL") or DEFAULT_BASE_URL).rstrip("/")
-    return value if value.endswith("/v1") else f"{value}/v1"
+    return value if value.endswith("/v2") else f"{value}/v2"
 
 
 def _api_key(api_key: str | None) -> str:
