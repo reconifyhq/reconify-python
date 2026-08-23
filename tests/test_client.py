@@ -92,6 +92,7 @@ def test_ingestion_serializes_typed_body() -> None:
                 reference="order-1",
                 entity_id="wallet-1",
                 amount="10.00",
+                correlation_id="checkout-123",
                 currency="USD",
             )
         ]
@@ -104,6 +105,7 @@ def test_ingestion_serializes_typed_body() -> None:
         client.ingestion.ingest_monitoring_events(body)
 
     assert json.loads(requests[0].content)["events"][0]["entity_id"] == "wallet-1"
+    assert json.loads(requests[0].content)["events"][0]["correlation_id"] == "checkout-123"
     assert requests[0].url.path == "/v2/events"
 
 
