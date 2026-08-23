@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.0
+
+- Added optional `correlation_id` support to the typed monitoring event request
+  model and ingestion serialization.
+
 ## 1.0.0
 
 - Rebuilt the client for the current 13-operation public monitoring API.

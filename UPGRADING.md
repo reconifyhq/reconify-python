@@ -15,3 +15,22 @@ Use these resources:
 Python models use snake_case fields and preserve unknown enum values through
 tolerant string enums. Existing v1 clients can continue using `/v1`; v2
 clients must use the v2 artifact and endpoint.
+
+## Upgrading to 2.1.0
+
+The 2.1.0 client adds the optional `correlation_id` field to
+`MonitoringEvent`. Use it when the same transaction spans services that report
+different references:
+
+```python
+MonitoringEvent(
+    flow="payment_to_wallet",
+    type="payment.succeeded",
+    reference="order-123",
+    entity_id="wallet-123",
+    correlation_id="checkout-123",
+)
+```
+
+The value is sent as event metadata and does not change operation grouping or
+evaluation behavior.

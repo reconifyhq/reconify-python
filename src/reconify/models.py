@@ -131,6 +131,7 @@ class MonitoringEvent(RequestModel):
     entity_id: str
     occurred_at: datetime | None = None
     amount: str | None = None
+    correlation_id: str | None = None
     currency: str | None = None
     data: MonitoringEventData | None = None
     metadata: dict[str, str | int | float | bool] | None = None
