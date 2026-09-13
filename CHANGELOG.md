@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0
+
+- Synced with the public API contract 2.3.0.
+- Added settlement event types, causation and revision metadata, financial
+  breakdowns, and settlement allocations.
+- Added single-event and bare-array ingestion payloads alongside wrapped batches.
+- Added synchronous and asynchronous on-chain evidence source registration.
+
 ## 2.1.0
 
 - Added optional `correlation_id` support to the typed monitoring event request

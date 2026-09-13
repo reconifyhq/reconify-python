@@ -88,6 +88,8 @@ def _validate_request_body(body: Any) -> Any:
             return model_dump(body)
         except ValidationError as exc:
             raise ReconifyValidationError(str(exc)) from exc
+    if isinstance(body, list):
+        return [_validate_request_body(item) for item in body]
     return body
 
 

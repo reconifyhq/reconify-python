@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from reconify import Reconify
+from reconify import AsyncReconify, Reconify
 from reconify.errors import (
     ReconifyAuthenticationError,
     ReconifyConflictError,
@@ -19,6 +19,8 @@ from reconify.models import (
     AddNoteRequest,
     MonitoringBatchRequest,
     MonitoringEvent,
+    OnchainSourceLocator,
+    OnchainSourceRequest,
     PatchIssueRequest,
 )
 from reconify.transport import RetryConfig
@@ -144,6 +146,116 @@ def test_note_idempotency_header_and_issue_assignment() -> None:
     assert requests[1].method == "PATCH"
 
 
+def test_onchain_source_registration() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            202, json={"id": "src-1", "status": "queued", "duplicate": False}, request=request
+        )
+
+    body = OnchainSourceRequest(
+        flow="provider_to_settlement_account",
+        operation_reference="settlement-1",
+        source_event_id="evt_1",
+        kind="transaction",
+        locator=OnchainSourceLocator(network="ethereum-mainnet", transaction_reference="0xabc"),
+    )
+    with Reconify(
+        "rk_test",
+        base_url="http://api.test",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    ) as client:
+        result = client.onchain.register_onchain_source(body, idempotency_key="source-1")
+
+    assert result.id == "src-1"
+    assert requests[0].url.path == "/v2/onchain-sources"
+    assert requests[0].headers["Idempotency-Key"] == "source-1"
+    assert json.loads(requests[0].content)["locator"]["transaction_reference"] == "0xabc"
+
+
+async def test_async_onchain_source_registration() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            202, json={"id": "src-1", "status": "queued", "duplicate": False}, request=request
+        )
+
+    body = OnchainSourceRequest(
+        flow="provider_to_settlement_account",
+        operation_reference="settlement-1",
+        source_event_id="evt_1",
+        kind="transaction",
+        locator=OnchainSourceLocator(network="ethereum-mainnet"),
+    )
+    async with AsyncReconify(
+        "rk_test",
+        base_url="http://api.test",
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    ) as client:
+        result = await client.onchain.register_onchain_source(body, idempotency_key="source-1")
+
+    assert result.status == "queued"
+    assert requests[0].headers["Idempotency-Key"] == "source-1"
+
+
+def test_expanded_event_fields_parse() -> None:
+    from reconify.models import Event
+
+    event = Event.model_validate(
+        {
+            **_event(),
+            "flow": "provider_to_settlement_account",
+            "event_type": "settlement.created",
+            "entity_type": "settlement_account",
+            "causation_id": "evt_prior",
+            "correlation_id": "settlement-1",
+            "revises_event_id": None,
+            "gross": "100.00",
+            "net": "98.00",
+            "component_count": 1,
+            "allocation_count": 0,
+        }
+    )
+
+    assert event.event_type.value == "settlement.created"
+    assert event.gross == "100.00"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        MonitoringEvent(
+            flow="payment_to_wallet", type="payment.succeeded", reference="r", entity_id="w"
+        ),
+        [
+            MonitoringEvent(
+                flow="payment_to_wallet", type="payment.succeeded", reference="r", entity_id="w"
+            )
+        ],
+    ],
+)
+def test_ingestion_accepts_single_and_bare_array(body: object) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(202, json={"results": []}, request=request)
+
+    with Reconify(
+        "rk_test",
+        base_url="http://api.test",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    ) as client:
+        client.ingestion.ingest_monitoring_events(body)  # type: ignore[arg-type]
+
+    payload = json.loads(requests[0].content)
+    assert isinstance(payload, (dict, list))
+
+
 def test_errors_are_typed_and_safe() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -179,9 +291,7 @@ def test_errors_are_typed_and_safe() -> None:
         (503, ReconifyServiceUnavailableError),
     ],
 )
-def test_public_error_statuses_are_typed(
-    status: int, error_type: type[Exception]
-) -> None:
+def test_public_error_statuses_are_typed(status: int, error_type: type[Exception]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
             status,

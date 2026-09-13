@@ -4,6 +4,7 @@ from .events import AsyncEvents, Events
 from .ingestion import AsyncIngestion, Ingestion
 from .issues import AsyncIssues, Issues
 from .metadata import AsyncMetadata, Metadata
+from .onchain import AsyncOnchain, Onchain
 from .organization import AsyncOrganization, Organization
 
 SYNC_RESOURCE_CLASSES = {
@@ -12,6 +13,7 @@ SYNC_RESOURCE_CLASSES = {
     "ingestion": Ingestion,
     "issues": Issues,
     "organization": Organization,
+    "onchain": Onchain,
 }
 ASYNC_RESOURCE_CLASSES = {
     "metadata": AsyncMetadata,
@@ -19,6 +21,7 @@ ASYNC_RESOURCE_CLASSES = {
     "ingestion": AsyncIngestion,
     "issues": AsyncIssues,
     "organization": AsyncOrganization,
+    "onchain": AsyncOnchain,
 }
 
 OPERATION_SPECS = {
@@ -35,6 +38,7 @@ OPERATION_SPECS = {
     "issues_add_note": ("issues", "POST", "/issues/{issue_id}/notes"),
     "organization_get": ("organization", "GET", "/organization"),
     "organization_list_members": ("organization", "GET", "/organization/members"),
+    "register-onchain-source": ("onchain", "POST", "/onchain-sources"),
 }
 
 OPERATION_METHODS = {
@@ -51,6 +55,7 @@ OPERATION_METHODS = {
     "issues_add_note": "add_issue_note",
     "organization_get": "get_organization",
     "organization_list_members": "list_organization_members",
+    "register-onchain-source": "register_onchain_source",
 }
 
 __all__ = [
@@ -59,11 +64,13 @@ __all__ = [
     "AsyncIssues",
     "AsyncMetadata",
     "AsyncOrganization",
+    "AsyncOnchain",
     "Events",
     "Ingestion",
     "Issues",
     "Metadata",
     "Organization",
+    "Onchain",
     "ASYNC_RESOURCE_CLASSES",
     "OPERATION_SPECS",
     "OPERATION_METHODS",

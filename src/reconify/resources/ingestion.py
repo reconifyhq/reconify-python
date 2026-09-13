@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..models import MonitoringBatchRequest, MonitoringBatchResponse
+from ..models import MonitoringBatchRequest, MonitoringBatchResponse, MonitoringEvent
 from .base import AsyncResource, SyncResource
 
 
 class Ingestion(SyncResource):
     def ingest_monitoring_events(
-        self, body: MonitoringBatchRequest, raw: bool = False, **query: Any
+        self,
+        body: MonitoringEvent | list[MonitoringEvent] | MonitoringBatchRequest,
+        raw: bool = False,
+        **query: Any,
     ) -> Any:
         return self._request(
             "POST",
@@ -24,7 +27,10 @@ class Ingestion(SyncResource):
 
 class AsyncIngestion(AsyncResource):
     async def ingest_monitoring_events(
-        self, body: MonitoringBatchRequest, raw: bool = False, **query: Any
+        self,
+        body: MonitoringEvent | list[MonitoringEvent] | MonitoringBatchRequest,
+        raw: bool = False,
+        **query: Any,
     ) -> Any:
         return await self._request(
             "POST",

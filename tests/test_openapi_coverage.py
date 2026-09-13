@@ -40,7 +40,7 @@ def test_openapi_contains_only_public_routes() -> None:
 
 def test_every_openapi_operation_has_a_public_method() -> None:
     operations = _operations()
-    assert len(operations) == 13
+    assert len(operations) == 14
     assert len({operation_id for operation_id, _, _ in operations}) == len(operations)
     assert len(OPERATION_SPECS) == len(operations)
     for operation_id, verb, route in operations:

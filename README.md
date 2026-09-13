@@ -23,8 +23,9 @@ staging or self-hosted endpoint, and URLs with or without `/v2` are accepted.
 
 ## Public resources
 
-The client exposes metadata, events, ingestion, issues, and organization. The
-current public contract contains exactly 13 operations. Python methods use
+The client exposes metadata, events, ingestion, issues, organization, and
+on-chain evidence registration. The current public contract contains exactly
+14 operations. Python methods use
 `snake_case` names and typed Pydantic v2 models from `reconify.models`.
 
 Sync and async clients provide cursor iterators:
@@ -62,6 +63,9 @@ Version `2.0.0` targets the v2 monitoring and issue-investigation API at `/v2`.
 Generated operation IDs use stable `resource_action` identifiers while the
 Python resource methods retain their snake_case names. See
 [UPGRADING.md](UPGRADING.md).
+
+Version `2.2.0` adds settlement event fields, flexible ingestion payloads, and
+on-chain evidence source registration. See [UPGRADING.md](UPGRADING.md).
 
 ## Build and release
 
