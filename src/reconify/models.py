@@ -36,6 +36,7 @@ class Flow(TolerantStrEnum):
     PAYMENT_TO_ORDER = "payment_to_order"
     WALLET_TO_WALLET = "wallet_to_wallet"
     WALLET_TO_PAYOUT = "wallet_to_payout"
+    PROVIDER_TO_SETTLEMENT_ACCOUNT = "provider_to_settlement_account"
 
 
 class EventType(TolerantStrEnum):
@@ -49,6 +50,13 @@ class EventType(TolerantStrEnum):
     WALLET_CREDITED = "wallet.credited"
     WALLET_DEBITED = "wallet.debited"
     WALLET_REFUNDED = "wallet.refunded"
+    SETTLEMENT_ALLOCATIONS_RECORDED = "settlement.allocations_recorded"
+    SETTLEMENT_CREATED = "settlement.created"
+    SETTLEMENT_DISBURSED = "settlement.disbursed"
+    SETTLEMENT_FAILED = "settlement.failed"
+    SETTLEMENT_FINALIZED = "settlement.finalized"
+    SETTLEMENT_RECEIVED = "settlement.received"
+    SETTLEMENT_REVISED = "settlement.revised"
 
 
 class EntityType(TolerantStrEnum):
@@ -102,6 +110,44 @@ class MonitoringErrorCode(TolerantStrEnum):
     MALFORMED_REQUEST = "malformed_request"
 
 
+class OnchainSourceKind(TolerantStrEnum):
+    PROVIDER_PAYMENT = "provider_payment"
+    TRANSACTION = "transaction"
+    ADDRESS_REFERENCE = "address_reference"
+
+
+class OnchainNetwork(TolerantStrEnum):
+    ETHEREUM_MAINNET = "ethereum-mainnet"
+    ETHEREUM_SEPOLIA = "ethereum-sepolia"
+    SOLANA_MAINNET = "solana-mainnet"
+    SOLANA_DEVNET = "solana-devnet"
+
+
+class OnchainSourceStatus(TolerantStrEnum):
+    QUEUED = "queued"
+
+
+class FinancialComponentKind(TolerantStrEnum):
+    FEE = "fee"
+    COMMISSION = "commission"
+    TAX = "tax"
+    RESERVE = "reserve"
+    ADJUSTMENT = "adjustment"
+    OTHER = "other"
+
+
+class FinancialComponentEffect(TolerantStrEnum):
+    ADD = "add"
+    DEDUCT = "deduct"
+    INCLUDED = "included"
+
+
+class SettlementAllocationType(TolerantStrEnum):
+    PAYMENT = "payment"
+    REFUND = "refund"
+    CHARGEBACK = "chargeback"
+
+
 class APIInfo(ResponseModel):
     name: str
     version: str
@@ -113,6 +159,31 @@ class Health(ResponseModel):
     status: str
 
 
+class FinancialComponent(RequestModel):
+    amount: str
+    kind: FinancialComponentKind
+    effect: FinancialComponentEffect
+    description: str | None = None
+    provider_type: str | None = None
+    reference: str | None = None
+    metadata: dict[str, str | int | float | bool] | None = None
+
+
+class FinancialBreakdown(RequestModel):
+    gross: str
+    net: str
+    components: list[FinancialComponent] = Field(max_length=100)
+
+
+class SettlementAllocation(RequestModel):
+    allocation_id: str
+    allocation_type: SettlementAllocationType
+    flow: str
+    reference: str
+    amount: str
+    event_id: str | None = None
+
+
 class MonitoringEventData(RequestModel):
     provider: str | None = None
     integration_ref: str | None = None
@@ -121,6 +192,8 @@ class MonitoringEventData(RequestModel):
     failure_code: str | None = None
     failure_message: str | None = None
     retryable: bool | None = None
+    revises_event_id: str | None = None
+    allocations: list[SettlementAllocation] | None = Field(default=None, max_length=500)
 
 
 class MonitoringEvent(RequestModel):
@@ -132,8 +205,10 @@ class MonitoringEvent(RequestModel):
     occurred_at: datetime | None = None
     amount: str | None = None
     correlation_id: str | None = None
+    causation_id: str | None = None
     currency: str | None = None
     data: MonitoringEventData | None = None
+    financial_breakdown: FinancialBreakdown | None = None
     metadata: dict[str, str | int | float | bool] | None = None
 
 
@@ -172,8 +247,17 @@ class Event(ResponseModel):
     received_at: datetime
     amount: str | None = None
     currency: str | None = None
+    causation_id: str | None = None
+    correlation_id: str | None = None
+    revises_event_id: str | None = None
     provider: str | None = None
     status: ReceiptStatus
+    gross: str | None = None
+    net: str | None = None
+    component_count: int | None = None
+    allocation_count: int | None = None
+    financial_breakdown: FinancialBreakdown | None = None
+    allocations: list[SettlementAllocation] | None = None
 
 
 class ListEventsResponse(ResponseModel):
@@ -242,6 +326,32 @@ class Error(ResponseModel):
     title: str | None = None
     status: int | None = None
     detail: str | None = None
+
+
+class OnchainSourceLocator(RequestModel):
+    integration_ref: str | None = None
+    network: OnchainNetwork | None = None
+    protocol_reference: str | None = None
+    provider_reference: str | None = None
+    provider_transaction_id: str | None = None
+    receiving_address: str | None = None
+    transaction_reference: str | None = None
+    window_end: datetime | None = None
+    window_start: datetime | None = None
+
+
+class OnchainSourceRequest(RequestModel):
+    flow: str
+    operation_reference: str = Field(min_length=1, max_length=256)
+    source_event_id: str = Field(min_length=1, max_length=256)
+    kind: OnchainSourceKind
+    locator: OnchainSourceLocator
+
+
+class OnchainSourceResponse(ResponseModel):
+    id: str
+    status: OnchainSourceStatus
+    duplicate: bool
 
 
 def model_dump(model: BaseModel) -> dict[str, Any]:

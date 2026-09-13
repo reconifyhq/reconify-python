@@ -17,11 +17,13 @@ from .resources import (
     AsyncIngestion,
     AsyncIssues,
     AsyncMetadata,
+    AsyncOnchain,
     AsyncOrganization,
     Events,
     Ingestion,
     Issues,
     Metadata,
+    Onchain,
     Organization,
 )
 from .transport import AsyncTransport, RetryConfig, SyncTransport
@@ -51,6 +53,7 @@ class Reconify:
     ingestion: Ingestion
     issues: Issues
     organization: Organization
+    onchain: Onchain
 
     def __init__(
         self,
@@ -108,6 +111,7 @@ class AsyncReconify:
     ingestion: AsyncIngestion
     issues: AsyncIssues
     organization: AsyncOrganization
+    onchain: AsyncOnchain
 
     def __init__(
         self,
